@@ -18,6 +18,9 @@
 go.work
 tmp/
 
+.DS_STORE
+.env
+
 # IDE specific files
 .vscode
 .idea

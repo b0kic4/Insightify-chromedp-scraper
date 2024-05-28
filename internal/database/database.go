@@ -1,53 +1,54 @@
 package database
 
 import (
-	"context"
-	"database/sql"
+	"Insightify-backend/internal/database/models"
 	"fmt"
 	"log"
 	"os"
-	"time"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-	_ "github.com/joho/godotenv/autoload"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 type Service interface {
 	Health() map[string]string
+	DB() *gorm.DB
 }
 
 type service struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-var (
-	database = os.Getenv("DB_DATABASE")
-	password = os.Getenv("DB_PASSWORD")
-	username = os.Getenv("DB_USERNAME")
-	port     = os.Getenv("DB_PORT")
-	host     = os.Getenv("DB_HOST")
-)
-
 func New() Service {
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", username, password, host, port, database)
-	db, err := sql.Open("pgx", connStr)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
+		os.Getenv("DB_HOST"), os.Getenv("DB_USER"), os.Getenv("DB_PW"), os.Getenv("DB_NAME"), os.Getenv("DB_PORT"))
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to connect database: %v", err)
 	}
-	s := &service{db: db}
-	return s
+
+	// Perform auto migration to keep the schema updated.
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		log.Fatalf("failed to auto-migrate database schemas: %v", err)
+	}
+
+	return &service{db: db}
+}
+
+func (s *service) DB() *gorm.DB {
+	return s.db
 }
 
 func (s *service) Health() map[string]string {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-
-	err := s.db.PingContext(ctx)
+	postgresDB, err := s.db.DB()
 	if err != nil {
-		log.Fatalf(fmt.Sprintf("db down: %v", err))
+		log.Fatalf("DB ping failed: %v", err)
 	}
 
-	return map[string]string{
-		"message": "It's healthy",
+	err = postgresDB.Ping()
+	if err != nil {
+		log.Fatalf("DB down: %v", err)
 	}
+
+	return map[string]string{"message": "It's healthy"}
 }
