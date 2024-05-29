@@ -1,6 +1,7 @@
 package server
 
 import (
+	"Insightify-backend/internal/analyze"
 	tokenvalidation "Insightify-backend/internal/validateToken"
 	"encoding/json"
 	"log"
@@ -22,9 +23,10 @@ func (s *Server) RegisterRoutes() http.Handler {
 		MaxAge:           300,
 	}).Handler
 
-	r.Use(middleware.Logger)
-	r.Use(tokenvalidation.TokenAuthMiddleware)
 	r.Use(corsHandler)
+
+	r.Use(middleware.Logger)
+	r.Mount("/analysis", analyze.AnalysisRoutes())
 	r.Mount("/", s.generalRoutes())
 
 	return r

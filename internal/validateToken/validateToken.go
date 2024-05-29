@@ -19,8 +19,11 @@ func TokenAuthMiddleware(next http.Handler) http.Handler {
 
 		tokenString := authHeader[len("Bearer "):]
 
-		tokenIssuer := fmt.Sprintf("https://%v", os.Getenv("KINDE_ENVIRONMENT_DOMAIN"))
+		tokenIssuer := os.Getenv("KINDE_ENVIRONMENT_DOMAIN")
 		apiAudience := os.Getenv("MY_API_AUDIENCE")
+
+		fmt.Println("token issuer: ", tokenIssuer)
+		fmt.Println("api audience: ", apiAudience)
 
 		jwksURL := fmt.Sprintf("%v/.well-known/jwks", tokenIssuer)
 		jwks, err := keyfunc.Get(jwksURL, keyfunc.Options{})
