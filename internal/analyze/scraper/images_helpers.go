@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	googleStorage "cloud.google.com/go/storage"
@@ -12,46 +13,49 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// NOTE: Devide the html into the key elements
-// text, content and design
-
-// NOTE: Divide the code into multiple segments and take the key elements from all the parts
-
-// CaptureScreenshots captures screenshots of a web page and extracts visible HTML
-func (s *Scraper) captureScreenshotsAndExtractCode(conn *websocket.Conn, ctx context.Context, bucketName string, lastScrollY int) (string, []string) {
+func (s *Scraper) captureScreenshotsAndExtractCode(conn *websocket.Conn, ctx context.Context, lastScrollY int) (string, []string) {
 	var screenshots []string
-	currentScrollY := lastScrollY
+	currentScrollY := 0
 	scrollIncrement := 800
 
-	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Analyzing..."})
+	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Website analysis has started"})
 
 	extractedHTML := s.extractCode(ctx)
 	if extractedHTML == "" {
 		fmt.Println("Failed to extract html")
+		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "error", Content: "Failed to extract HTML"})
+		return "", nil
 	}
 	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "html", Content: extractedHTML})
 
-	fmt.Println("extractedHTML: ", extractedHTML)
-
-	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "html", Content: extractedHTML})
+	totalHeight := lastScrollY
+	steps := totalHeight / scrollIncrement
+	if totalHeight%scrollIncrement != 0 {
+		steps++
+	}
 
 	// Scroll, capture screenshot and extract code
-	for {
+	for i := 0; i < steps; i++ {
 		var screenshot []byte
 		err := s.scrollAndCapture(ctx, &screenshot, &currentScrollY, scrollIncrement)
 		if err != nil {
 			fmt.Println("Error during scrolling and capture:", err)
+			s.sendWebSocketMessage(conn, WebSocketMessage{Type: "error", Content: "Error during scrolling and capture"})
 			break
 		}
-		if currentScrollY == lastScrollY {
+
+		if currentScrollY >= lastScrollY {
 			// End of page reached, no need to capture screenshots anymore
 			break
 		}
-		lastScrollY = currentScrollY
 
-		screenshotURL := s.uploadScreenshot(ctx, bucketName, string(screenshot), len(screenshots))
+		screenshotURL := s.uploadScreenshot(ctx, string(screenshot), len(screenshots))
 		screenshots = append(screenshots, screenshotURL)
 		fmt.Println("Screenshot captured and uploaded:", screenshotURL)
+
+		progress := float64(i+1) / float64(steps) * 100
+		progressMessage := fmt.Sprintf("Capturing screenshots: %.0f%% completed", progress)
+		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "progress", Content: progressMessage})
 	}
 
 	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Analysis completed"})
@@ -119,7 +123,7 @@ func (s *Scraper) scrollAndCapture(ctx context.Context, screenshot *[]byte, curr
 }
 
 // UploadScreenshot uploads the screenshot to Firebase Storage and returns the URL
-func (s *Scraper) uploadScreenshot(ctx context.Context, bucketName string, screenshotData string, index int) string {
+func (s *Scraper) uploadScreenshot(ctx context.Context, screenshotData string, index int) string {
 	dateFolder := time.Now().Format("2006-01-02")
 	uuid, err := uuid.NewRandom()
 	if err != nil {
@@ -128,7 +132,7 @@ func (s *Scraper) uploadScreenshot(ctx context.Context, bucketName string, scree
 	}
 	fileName := fmt.Sprintf("%s/screenshot-%d-%s.webp", dateFolder, index, uuid)
 
-	bucket, err := s.FirebaseStorage.Bucket(bucketName)
+	bucket, err := s.FirebaseStorage.Bucket(os.Getenv("FIREBASE_STORAGE_BUCKET"))
 	if err != nil {
 		log.Printf("Failed to get Firebase Storage bucket: %v", err)
 		return ""
@@ -152,5 +156,5 @@ func (s *Scraper) uploadScreenshot(ctx context.Context, bucketName string, scree
 		return ""
 	}
 
-	return "https://storage.googleapis.com/" + bucketName + "/" + fileName
+	return "https://storage.googleapis.com/" + os.Getenv("FIREBASE_STORAGE_BUCKET") + "/" + fileName
 }

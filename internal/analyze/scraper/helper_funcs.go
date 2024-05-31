@@ -69,10 +69,9 @@ func (s *Scraper) determineHeight(ctx context.Context) (int, error) {
 	return scrollYInt, nil
 }
 
-func (s *Scraper) cacheDataInRedis(url string, screenshots []string, aiResponse string) {
+func (s *Scraper) cacheDataInRedis(url string, screenshots []string) {
 	cachedData := CachedData{
 		Screenshots: screenshots,
-		AIResponse:  aiResponse,
 	}
 	jsonData, err := json.Marshal(cachedData)
 	if err != nil {

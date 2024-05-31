@@ -62,7 +62,6 @@ func incrementalScroll(ctx context.Context, scrollIncrement int) chromedp.Action
 }
 
 func (s *Scraper) navigateAndSetup(url string, conn *websocket.Conn) (context.Context, context.CancelFunc, error) {
-	fmt.Println("in the navigate and setup")
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"),
 	)
@@ -73,16 +72,13 @@ func (s *Scraper) navigateAndSetup(url string, conn *websocket.Conn) (context.Co
 	ctx, innerCancel := context.WithTimeout(ctx, 300*time.Second) // Increased timeout to 300 seconds
 
 	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		if req, ok := ev.(*network.EventRequestWillBeSent); ok {
-			log.Printf("Request URL: %s\n", req.Request.URL)
+		if _, ok := ev.(*network.EventRequestWillBeSent); ok {
+			// log.Printf("Request URL: %s\n", req.Request.URL)
 		}
 	})
 
-	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Navigating to: " + url})
-
 	retries := 3
 	for i := 0; i < retries; i++ {
-		fmt.Println("in the for loop of navigate and setup i: ", i)
 		if err := chromedp.Run(ctx, enableLifeCycleEvents(), navigateAndWaitFor(url, "networkIdle")); err != nil {
 			log.Println("Failed to navigate to:", url, "Attempt:", i+1, "Error:", err)
 			time.Sleep(2 * time.Second)

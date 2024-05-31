@@ -25,7 +25,6 @@ type WebSocketMessage struct {
 
 type CachedData struct {
 	Screenshots []string `json:"screenshots"`
-	AIResponse  string   `json:"ai_response"`
 }
 
 func NewScraper(ctx context.Context) *Scraper {
@@ -33,7 +32,6 @@ func NewScraper(ctx context.Context) *Scraper {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     os.Getenv("REDIS_ADD"),
 		Password: os.Getenv("REDIS_PW"),
-		DB:       0,
 	})
 
 	_, err := rdb.Ping(ctx).Result()
@@ -49,17 +47,12 @@ func NewScraper(ctx context.Context) *Scraper {
 	}
 }
 
-func (s *Scraper) CaptureAndUpload(url string, market string, audience string, insight string, bucketName string, conn *websocket.Conn) []string {
-	fmt.Println("Market:", market)
-	fmt.Println("Audience:", audience)
-	fmt.Println("Insight:", insight)
-
+func (s *Scraper) CaptureAndUpload(url string, conn *websocket.Conn) []string {
 	var cachedData CachedData
 	cachedResult, err := s.RedisClient.Get(context.Background(), url).Result()
 	if err == nil {
 		if err := json.Unmarshal([]byte(cachedResult), &cachedData); err == nil {
 			s.sendWebSocketMessage(conn, WebSocketMessage{Type: "images", Content: cachedData.Screenshots})
-			s.sendWebSocketMessage(conn, WebSocketMessage{Type: "ai_response", Content: cachedData.AIResponse})
 			return cachedData.Screenshots
 		}
 	}
@@ -72,28 +65,22 @@ func (s *Scraper) CaptureAndUpload(url string, market string, audience string, i
 	}
 	defer cancel()
 
+	// Navigation completed message
+	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Navigation to the provided url completed"})
+
 	lastScrollY, err := s.determineHeight(ctx)
 	if err != nil {
 		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "error", Content: "Failed to determine page height"})
 		return nil
 	}
 	fmt.Println("lastScrollY: ", lastScrollY)
+
 	// NOTE: html, screenshots = s.=||=
-	_, screenshots := s.captureScreenshotsAndExtractCode(conn, ctx, bucketName, lastScrollY)
+	_, screenshots := s.captureScreenshotsAndExtractCode(conn, ctx, lastScrollY)
 	if len(screenshots) > 0 {
 		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "images", Content: screenshots})
 
-		// Generate AI response
-		aiResponse, err := s.generateAIResponse(screenshots, market, audience, insight)
-		if err != nil {
-			s.sendWebSocketMessage(conn, WebSocketMessage{Type: "error", Content: "Error processing the AI request"})
-			return screenshots
-		}
-
-		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "ai_response", Content: aiResponse})
-		fmt.Println("ai response: ", aiResponse)
-
-		s.cacheDataInRedis(url, screenshots, aiResponse)
+		s.cacheDataInRedis(url, screenshots)
 	} else {
 		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "error", Content: "No screenshots were captured"})
 	}

@@ -15,7 +15,7 @@ import (
 func (s *Server) RegisterRoutes() http.Handler {
 	r := chi.NewRouter()
 	corsHandler := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "https://insightifyyy.vercel.app/"},
+		AllowedOrigins:   []string{"http://localhost:3000", "https://insightifyyy.vercel.app/", "https://insightify-backend-3caf92991e4a.herokuapp.com/"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"X-PINGOTHER", "Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
@@ -34,6 +34,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 
 func (s *Server) generalRoutes() chi.Router {
 	r := chi.NewRouter()
+	r.Get("/", s.HelloWorldHandler)
 	r.With(tokenvalidation.TokenAuthMiddleware).Get("/health", s.healthHandler)
 	return r
 }
