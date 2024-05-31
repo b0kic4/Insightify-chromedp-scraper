@@ -13,20 +13,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (s *Scraper) captureScreenshotsAndExtractCode(conn *websocket.Conn, ctx context.Context, lastScrollY int) (string, []string) {
+func (s *Scraper) captureScreenshots(conn *websocket.Conn, ctx context.Context, lastScrollY int) []string {
 	var screenshots []string
 	currentScrollY := 0
-	scrollIncrement := 800
+	scrollIncrement := 750
 
 	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Website analysis has started"})
-
-	extractedHTML := s.extractCode(ctx)
-	if extractedHTML == "" {
-		fmt.Println("Failed to extract html")
-		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "error", Content: "Failed to extract HTML"})
-		return "", nil
-	}
-	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "html", Content: extractedHTML})
 
 	totalHeight := lastScrollY
 	steps := totalHeight / scrollIncrement
@@ -54,12 +46,12 @@ func (s *Scraper) captureScreenshotsAndExtractCode(conn *websocket.Conn, ctx con
 		fmt.Println("Screenshot captured and uploaded:", screenshotURL)
 
 		progress := float64(i+1) / float64(steps) * 100
-		progressMessage := fmt.Sprintf("Capturing screenshots: %.0f%% completed", progress)
-		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "progress", Content: progressMessage})
+		// progressMessage := fmt.Sprintf("Capturing screenshots: %.0f%% completed", progress)
+		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "progress", Content: progress})
 	}
 
 	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Analysis completed"})
-	return extractedHTML, screenshots
+	return screenshots
 }
 
 // NOTE: Extract code from extracted code based on the screenshot

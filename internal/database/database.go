@@ -1,7 +1,6 @@
 package database
 
 import (
-	"Insightify-backend/internal/database/models"
 	"fmt"
 	"log"
 	"os"
@@ -25,11 +24,6 @@ func New() Service {
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatalf("failed to connect database: %v", err)
-	}
-
-	// Perform auto migration to keep the schema updated.
-	if err := db.AutoMigrate(&models.User{}); err != nil {
-		log.Fatalf("failed to auto-migrate database schemas: %v", err)
 	}
 
 	return &service{db: db}
