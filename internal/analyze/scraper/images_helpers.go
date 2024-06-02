@@ -18,7 +18,7 @@ func (s *Scraper) captureScreenshots(conn *websocket.Conn, ctx context.Context, 
 	currentScrollY := 0
 	scrollIncrement := 750
 
-	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Website analysis has started"})
+	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Website analysis has been started"})
 
 	totalHeight := lastScrollY
 	steps := totalHeight / scrollIncrement
