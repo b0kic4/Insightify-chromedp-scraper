@@ -50,13 +50,14 @@ func NewScraper(ctx context.Context) *Scraper {
 func (s *Scraper) CaptureAndUpload(url string, conn *websocket.Conn) []string {
 	var cachedData CachedData
 	cachedResult, err := s.RedisClient.Get(context.Background(), url).Result()
+	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Looking for cached results"})
 	if err == nil {
 		if err := json.Unmarshal([]byte(cachedResult), &cachedData); err == nil {
 			s.sendWebSocketMessage(conn, WebSocketMessage{Type: "images", Content: cachedData.Screenshots})
 			return cachedData.Screenshots
 		}
 	}
-	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Request has been received, proceeding with analysation"})
+	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "No cached data found, proceeding with analysation"})
 	// No valid cache found, proceed to capture and analyze
 	ctx, cancel, err := s.navigateAndSetup(url, conn)
 	if err != nil {
@@ -75,7 +76,6 @@ func (s *Scraper) CaptureAndUpload(url string, conn *websocket.Conn) []string {
 	}
 	fmt.Println("lastScrollY: ", lastScrollY)
 
-	// NOTE: html, screenshots = s.=||=
 	screenshots := s.captureScreenshots(conn, ctx, lastScrollY)
 	if len(screenshots) > 0 {
 		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "images", Content: screenshots})

@@ -1,7 +1,6 @@
 package scraper
 
 import (
-	"Insightify-backend/internal/analyze/openai"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -93,45 +92,4 @@ func (s *Scraper) sendWebSocketMessage(conn *websocket.Conn, msg WebSocketMessag
 	if err := conn.WriteMessage(websocket.TextMessage, message); err != nil {
 		log.Printf("Failed to send WebSocket message: %v", err)
 	}
-}
-
-func (s *Scraper) generateAIResponse(screenshots []string, market, audience, insight string) (string, error) {
-	var contents []openai.Content
-	for _, screenshotURL := range screenshots {
-		contents = append(contents, openai.Content{
-			Type: "image_url",
-			ImageURL: struct {
-				URL string `json:"url"`
-			}{URL: screenshotURL},
-		})
-	}
-
-	// Adding a textual description to the prompt to give context to the AI
-	contents = append(contents, openai.Content{
-		Type: "text",
-		Text: fmt.Sprintf(`
-Analyze in detail and suggest a redesign for the provided website screenshots. Describe the current layout, color schemes, typography, and UI elements, and then propose improvements. Market: %s, Audience: %s, Insight: %s. Focus on:
-- **Mechanical Improvements:** Suggest changes for speed and responsiveness.
-- **Strategic Content Placement:** Optimize element positioning for user engagement.
-- **Aesthetic Enhancements:** Propose a new color scheme and typography.
-- **Artistic Elements:** Introduce unique graphics and interactive features.
-- **Effective Copy:** Enhance textual content for better persuasion.
-- **Layout and Imagery Adjustments:** Recommend new layout configurations and image placements.
-Summarize these enhancements in a structured manner to guide a redesign that connects more effectively with the target audience.
-`, market, audience, insight),
-	})
-
-	request := openai.GPTRequest{
-		Model:     "gpt-4-turbo",
-		Messages:  []openai.Message{{Role: "user", Content: contents}},
-		MaxTokens: 500, // You might adjust max tokens according to your needs and cost considerations
-	}
-
-	// Sending the constructed prompt to the OpenAI API
-	response, err := openai.SendPromptToGPT(request)
-	if err != nil {
-		return "", fmt.Errorf("failed to get AI response from OpenAI: %v", err)
-	}
-
-	return response, nil
 }

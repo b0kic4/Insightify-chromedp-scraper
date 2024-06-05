@@ -26,6 +26,7 @@ func (s *Server) RegisterRoutes() http.Handler {
 	r.Use(corsHandler)
 
 	r.Use(middleware.Logger)
+	// NOTE: Protect analysis routes with token validation
 	r.Mount("/analysis", analyze.AnalysisRoutes())
 	r.Mount("/", s.generalRoutes())
 

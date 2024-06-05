@@ -92,17 +92,6 @@ func (s *Scraper) extractCode(ctx context.Context) string {
 // count of the screenshots I need to implement
 // functionality for dividing the html into segments
 
-// extracts headers, paragraphs, links, buttons, images
-func (s *Scraper) analyzeContent(html string) string {
-	return ""
-}
-
-// extracts spans, div and containers (div, sections, footer)
-// takes css elements and screenshots
-func (s *Scraper) analyzeDesign(html string, screenshots []string) string {
-	return ""
-}
-
 // ScrollAndCapture performs incremental scrolls and captures screenshots
 func (s *Scraper) scrollAndCapture(ctx context.Context, screenshot *[]byte, currentScrollY *int, scrollIncrement int) error {
 	return chromedp.Run(ctx,
