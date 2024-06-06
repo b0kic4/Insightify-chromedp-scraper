@@ -12,6 +12,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// FIXME: There is a bug in here sometimes is not going
+// to the end of the website
+
 func enableLifeCycleEvents() chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		if err := page.Enable().Do(ctx); err != nil {

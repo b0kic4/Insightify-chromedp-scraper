@@ -12,22 +12,35 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (s *Scraper) scrollToTop(ctx context.Context) error {
-	// Use chromedp to scroll to the top of the page
-	err := chromedp.Run(ctx,
-		chromedp.KeyEvent(kb.Home),
-		chromedp.Sleep(900*time.Millisecond),
-		chromedp.KeyEvent(kb.PageUp),
-	)
-	if err != nil {
-		fmt.Println("Failed to scroll back to the top:", err)
-		return err
+func (s *Scraper) scrollToTop(ctx context.Context, retries int) error {
+	var currentScrollY float64
+
+	for i := 0; i <= retries; i++ {
+		// Use chromedp to scroll to the top of the page
+		err := chromedp.Run(ctx,
+			chromedp.KeyEvent(kb.Home),
+			chromedp.Sleep(900*time.Millisecond),
+			chromedp.KeyEvent(kb.PageUp),
+			chromedp.Evaluate(`Math.round(window.scrollY)`, &currentScrollY),
+		)
+		if err != nil {
+			fmt.Println("Failed to scroll back to the top:", err)
+			return err
+		}
+
+		if int(currentScrollY) == 0 {
+			return nil // Successfully scrolled to the top
+		}
+
+		fmt.Printf("Retry %d: Scroll position is not exactly at the top, current Y position: %d\n", i+1, int(currentScrollY))
 	}
-	return nil
+
+	return fmt.Errorf("unable to scroll to the top after %d retries", retries)
 }
 
 func (s *Scraper) determineHeight(ctx context.Context) (int, error) {
 	var lastScrollY float64 // Use float64 to initially receive the JavaScript floating point value
+
 	// Scroll to the bottom of the page to capture the scroll height
 	err := chromedp.Run(ctx,
 		chromedp.KeyEvent(kb.End),
@@ -44,11 +57,15 @@ func (s *Scraper) determineHeight(ctx context.Context) (int, error) {
 	scrollYInt := int(lastScrollY)
 	fmt.Println("last scroll: ", scrollYInt)
 
-	// Call scrollToTop to move the page to the top
-	err = s.scrollToTop(ctx)
+	// Number of retries for scrolling to the top
+	retries := 2
+
+	// Call scrollToTop to move the page to the top with retries
+	err = s.scrollToTop(ctx, retries)
 	if err != nil {
-		return 0, err // Error from scrollToTop is handled here
+		return 0, err
 	}
+
 	// Optionally, check the scroll position after scrolling up
 	var currentScrollY float64
 	err = chromedp.Run(ctx,

@@ -95,7 +95,7 @@ func (s *Scraper) extractCode(ctx context.Context) string {
 // ScrollAndCapture performs incremental scrolls and captures screenshots
 func (s *Scraper) scrollAndCapture(ctx context.Context, screenshot *[]byte, currentScrollY *int, scrollIncrement int) error {
 	return chromedp.Run(ctx,
-		chromedp.EmulateViewport(2160, 1080),
+		chromedp.EmulateViewport(1920, 1080),
 		chromedp.Sleep(500*time.Millisecond),
 		chromedp.CaptureScreenshot(screenshot),
 		incrementalScroll(ctx, scrollIncrement),
