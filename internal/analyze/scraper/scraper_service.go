@@ -25,6 +25,9 @@ type WebSocketMessage struct {
 
 type CachedData struct {
 	Screenshots []string `json:"screenshots"`
+	Market      string   `json:"market"`
+	Audience    string   `json:"audience"`
+	Insights    string   `json:"insights"`
 }
 
 func NewScraper(ctx context.Context) *Scraper {
@@ -47,9 +50,10 @@ func NewScraper(ctx context.Context) *Scraper {
 	}
 }
 
-func (s *Scraper) CaptureAndUpload(url string, conn *websocket.Conn) []string {
+func (s *Scraper) CaptureAndUpload(url string, userId string, market string, audience string, insights string, conn *websocket.Conn) []string {
 	var cachedData CachedData
-	cachedResult, err := s.RedisClient.Get(context.Background(), url).Result()
+	key := userId + ":" + url
+	cachedResult, err := s.RedisClient.Get(context.Background(), key).Result()
 	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Looking for cached results"})
 	if err == nil {
 		if err := json.Unmarshal([]byte(cachedResult), &cachedData); err == nil {
@@ -57,8 +61,7 @@ func (s *Scraper) CaptureAndUpload(url string, conn *websocket.Conn) []string {
 			return cachedData.Screenshots
 		}
 	}
-	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "No cached data found, proceeding with analysation"})
-	// No valid cache found, proceed to capture and analyze
+	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "No cached data found, proceeding with analysis"})
 	ctx, cancel, err := s.navigateAndSetup(url, conn)
 	if err != nil {
 		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "error", Content: "Failed to setup navigation"})
@@ -66,7 +69,6 @@ func (s *Scraper) CaptureAndUpload(url string, conn *websocket.Conn) []string {
 	}
 	defer cancel()
 
-	// Navigation completed message
 	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Navigation to the provided url completed"})
 
 	lastScrollY, err := s.determineHeight(ctx)
@@ -80,7 +82,7 @@ func (s *Scraper) CaptureAndUpload(url string, conn *websocket.Conn) []string {
 	if len(screenshots) > 0 {
 		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "images", Content: screenshots})
 
-		s.cacheDataInRedis(url, screenshots)
+		s.cacheDataInRedis(userId, url, screenshots, market, audience, insights)
 	} else {
 		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "error", Content: "No screenshots were captured"})
 	}

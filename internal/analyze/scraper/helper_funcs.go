@@ -24,8 +24,11 @@ func (s *Scraper) scrollToTop(ctx context.Context, retries int) error {
 			chromedp.Evaluate(`Math.round(window.scrollY)`, &currentScrollY),
 		)
 		if err != nil {
-			fmt.Println("Failed to scroll back to the top:", err)
-			return err
+			if i == retries {
+				fmt.Println("Failed to scroll back to the top:", err)
+				return err
+			}
+			continue
 		}
 
 		if int(currentScrollY) == 0 {
@@ -39,34 +42,29 @@ func (s *Scraper) scrollToTop(ctx context.Context, retries int) error {
 }
 
 func (s *Scraper) determineHeight(ctx context.Context) (int, error) {
-	var lastScrollY float64 // Use float64 to initially receive the JavaScript floating point value
+	var lastScrollY float64
 
 	// Scroll to the bottom of the page to capture the scroll height
 	err := chromedp.Run(ctx,
 		chromedp.KeyEvent(kb.End),
 		chromedp.Sleep(900*time.Millisecond),
 		chromedp.KeyEvent(kb.PageDown),
-		chromedp.Evaluate(`Math.round(window.scrollY)`, &lastScrollY), // Use Math.round to round the scroll position
+		chromedp.Evaluate(`Math.round(window.scrollY)`, &lastScrollY),
 	)
 	if err != nil {
 		fmt.Println("Failed to scroll to the bottom:", err)
 		return 0, err
 	}
 
-	// Convert float64 to int after rounding in the JavaScript executed above
 	scrollYInt := int(lastScrollY)
 	fmt.Println("last scroll: ", scrollYInt)
 
-	// Number of retries for scrolling to the top
 	retries := 2
-
-	// Call scrollToTop to move the page to the top with retries
 	err = s.scrollToTop(ctx, retries)
 	if err != nil {
 		return 0, err
 	}
 
-	// Optionally, check the scroll position after scrolling up
 	var currentScrollY float64
 	err = chromedp.Run(ctx,
 		chromedp.Evaluate(`Math.round(window.scrollY)`, &currentScrollY),
@@ -85,16 +83,21 @@ func (s *Scraper) determineHeight(ctx context.Context) (int, error) {
 	return scrollYInt, nil
 }
 
-func (s *Scraper) cacheDataInRedis(url string, screenshots []string) {
+func (s *Scraper) cacheDataInRedis(userId string, url string, screenshots []string, market string, audience string, insights string) {
 	cachedData := CachedData{
 		Screenshots: screenshots,
+		Market:      market,
+		Audience:    audience,
+		Insights:    insights,
 	}
 	jsonData, err := json.Marshal(cachedData)
 	if err != nil {
 		log.Printf("Error marshaling cached data: %v", err)
 		return
 	}
-	_, err = s.RedisClient.Set(context.Background(), url, jsonData, 24*time.Hour).Result()
+
+	key := userId + ":" + url
+	_, err = s.RedisClient.Set(context.Background(), key, jsonData, 24*time.Hour).Result()
 	if err != nil {
 		log.Printf("Error saving cached data to Redis: %v", err)
 	}
