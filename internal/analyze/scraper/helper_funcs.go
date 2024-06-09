@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// scrollToTop attempts to scroll to the top of the page by using Home key and PageUp key.
 func (s *Scraper) scrollToTop(ctx context.Context, retries int) error {
 	var currentScrollY float64
 
@@ -19,7 +20,7 @@ func (s *Scraper) scrollToTop(ctx context.Context, retries int) error {
 		// Use chromedp to scroll to the top of the page
 		err := chromedp.Run(ctx,
 			chromedp.KeyEvent(kb.Home),
-			chromedp.Sleep(900*time.Millisecond),
+			chromedp.Sleep(1500*time.Millisecond), // Increased sleep time
 			chromedp.KeyEvent(kb.PageUp),
 			chromedp.Evaluate(`Math.round(window.scrollY)`, &currentScrollY),
 		)
@@ -43,24 +44,46 @@ func (s *Scraper) scrollToTop(ctx context.Context, retries int) error {
 
 func (s *Scraper) determineHeight(ctx context.Context) (int, error) {
 	var lastScrollY float64
+	maxRetries := 5 // Maximum number of retries
+	retryCount := 0
+	sleepTime := 1500 * time.Millisecond
 
-	// Scroll to the bottom of the page to capture the scroll height
-	err := chromedp.Run(ctx,
-		chromedp.KeyEvent(kb.End),
-		chromedp.Sleep(900*time.Millisecond),
-		chromedp.KeyEvent(kb.PageDown),
-		chromedp.Evaluate(`Math.round(window.scrollY)`, &lastScrollY),
-	)
-	if err != nil {
-		fmt.Println("Failed to scroll to the bottom:", err)
-		return 0, err
+	// Function to scroll to the bottom of the page
+	scrollToBottom := func() error {
+		return chromedp.Run(ctx,
+			chromedp.KeyEvent(kb.End),
+			chromedp.Sleep(sleepTime),
+			chromedp.KeyEvent(kb.PageDown),
+			chromedp.Evaluate(`Math.round(window.scrollY)`, &lastScrollY),
+		)
+	}
+
+	// Retry mechanism
+	for retryCount < maxRetries {
+		err := scrollToBottom()
+		if err != nil {
+			fmt.Println("Failed to scroll to the bottom:", err)
+			return 0, err
+		}
+
+		if lastScrollY > 0 {
+			break
+		}
+
+		fmt.Printf("Retry %d: lastScrollY is 0, retrying...\n", retryCount+1)
+		retryCount++
+		sleepTime += 500 * time.Millisecond // Optionally increase sleep time on each retry
+	}
+
+	if lastScrollY == 0 {
+		return 0, fmt.Errorf("failed to get a valid scroll height after %d retries", maxRetries)
 	}
 
 	scrollYInt := int(lastScrollY)
 	fmt.Println("last scroll: ", scrollYInt)
 
-	retries := 2
-	err = s.scrollToTop(ctx, retries)
+	retries := 5
+	err := s.scrollToTop(ctx, retries)
 	if err != nil {
 		return 0, err
 	}
