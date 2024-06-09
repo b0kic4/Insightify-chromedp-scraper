@@ -83,26 +83,6 @@ func (s *Scraper) determineHeight(ctx context.Context) (int, error) {
 	return scrollYInt, nil
 }
 
-func (s *Scraper) cacheDataInRedis(userId string, url string, screenshots []string, market string, audience string, insights string) {
-	cachedData := CachedData{
-		Screenshots: screenshots,
-		Market:      market,
-		Audience:    audience,
-		Insights:    insights,
-	}
-	jsonData, err := json.Marshal(cachedData)
-	if err != nil {
-		log.Printf("Error marshaling cached data: %v", err)
-		return
-	}
-
-	key := userId + ":" + url
-	_, err = s.RedisClient.Set(context.Background(), key, jsonData, 24*time.Hour).Result()
-	if err != nil {
-		log.Printf("Error saving cached data to Redis: %v", err)
-	}
-}
-
 func (s *Scraper) sendWebSocketMessage(conn *websocket.Conn, msg WebSocketMessage) {
 	message, err := json.Marshal(msg)
 	if err != nil {

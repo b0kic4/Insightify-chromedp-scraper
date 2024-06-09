@@ -16,11 +16,7 @@ var upgrader = websocket.Upgrader{
 }
 
 type Command struct {
-	URL      string `json:"url"`
-	Market   string `json:"market"`
-	Audience string `json:"audience"`
-	Insights string `json:"insights"`
-	UserID   string `json:"userID"`
+	URL string `json:"url"`
 }
 
 func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +41,7 @@ func WebSocketHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		ctx := r.Context()
 		scraperInstance := scraper.NewScraper(ctx)
-		screenshotURLs := scraperInstance.CaptureAndUpload(cmd.URL, cmd.UserID, cmd.Market, cmd.Audience, cmd.Insights, conn)
+		screenshotURLs := scraperInstance.CaptureAndUpload(cmd.URL, conn)
 
 		// Send results back to the client
 		response, err := json.Marshal(screenshotURLs)
