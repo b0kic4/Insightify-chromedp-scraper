@@ -9,11 +9,9 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
+	"github.com/chromedp/chromedp/kb"
 	"github.com/gorilla/websocket"
 )
-
-// FIXME: There is a bug in here sometimes is not going
-// to the end of the website
 
 func enableLifeCycleEvents() chromedp.ActionFunc {
 	return func(ctx context.Context) error {
@@ -67,9 +65,11 @@ func incrementalScroll(ctx context.Context, scrollIncrement int) chromedp.Action
 func (s *Scraper) navigateAndSetup(url string, conn *websocket.Conn) (context.Context, context.CancelFunc, error) {
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.UserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"),
-	)
+		chromedp.Flag("headless", false),
+		chromedp.Flag("disable-notifications", true),
+		chromedp.Flag("block-new-web-contents", true),
+		chromedp.Flag("disable-popup-blocking", false))
 	allocCtx, _ := chromedp.NewExecAllocator(context.Background(), opts...)
-	// defer allocCancel()
 
 	ctx, cancel := chromedp.NewContext(allocCtx)
 	ctx, innerCancel := context.WithTimeout(ctx, 300*time.Second) // Increased timeout to 300 seconds
@@ -82,12 +82,15 @@ func (s *Scraper) navigateAndSetup(url string, conn *websocket.Conn) (context.Co
 
 	retries := 3
 	for i := 0; i < retries; i++ {
-		if err := chromedp.Run(ctx, enableLifeCycleEvents(), navigateAndWaitFor(url, "networkIdle")); err != nil {
+		if err := chromedp.Run(ctx, enableLifeCycleEvents(), navigateAndWaitFor(url, "networkIdle"), chromedp.Sleep(1000*time.Microsecond), chromedp.KeyEvent(kb.Escape)); err != nil {
 			log.Println("Failed to navigate to:", url, "Attempt:", i+1, "Error:", err)
-			time.Sleep(2 * time.Second)
+			time.Sleep(200 * time.Millisecond)
 			continue
 		}
 		log.Println("Navigation completed to:", url)
+
+		// Attempt to close modals
+
 		return ctx, func() {
 			innerCancel()
 			cancel()

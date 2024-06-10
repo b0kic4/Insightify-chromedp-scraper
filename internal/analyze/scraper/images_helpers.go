@@ -44,6 +44,7 @@ func (s *Scraper) captureScreenshots(conn *websocket.Conn, ctx context.Context, 
 		screenshotURL := s.uploadScreenshot(ctx, string(screenshot), len(screenshots))
 		screenshots = append(screenshots, screenshotURL)
 		fmt.Println("Screenshot captured and uploaded:", screenshotURL)
+		fmt.Println("currentScrollY: ", currentScrollY)
 
 		progress := float64(i+1) / float64(steps) * 100
 		// progressMessage := fmt.Sprintf("Capturing screenshots: %.0f%% completed", progress)
