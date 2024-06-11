@@ -28,7 +28,8 @@ func NewScraper(ctx context.Context) *Scraper {
 }
 
 func (s *Scraper) CaptureAndUpload(url string, conn *websocket.Conn) []string {
-	ctx, cancel, err := s.navigateAndSetup(url, conn)
+	s.sendWebSocketMessage(conn, WebSocketMessage{Type: "status", Content: "Your request has been received"})
+	ctx, cancel, err := s.navigateAndSetup(url)
 	if err != nil {
 		s.sendWebSocketMessage(conn, WebSocketMessage{Type: "error", Content: "Failed to setup navigation"})
 		return nil
