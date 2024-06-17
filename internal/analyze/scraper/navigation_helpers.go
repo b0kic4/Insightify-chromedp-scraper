@@ -73,7 +73,7 @@ func (s *Scraper) navigateAndSetup(url string) (context.Context, context.CancelF
 
 	retries := 3
 	for i := 0; i < retries; i++ {
-		if err := chromedp.Run(ctx, enableLifeCycleEvents(), navigateAndWaitFor(url, "networkIdle"), chromedp.Sleep(1*time.Millisecond), chromedp.KeyEvent(kb.Escape)); err != nil {
+		if err := chromedp.Run(ctx, enableLifeCycleEvents(), navigateAndWaitFor(url, "networkIdle"), chromedp.Sleep(1000*time.Millisecond), chromedp.KeyEvent(kb.Escape)); err != nil {
 			log.Println("Failed to navigate to:", url, "Attempt:", i+1, "Error:", err)
 			time.Sleep(200 * time.Millisecond)
 			continue

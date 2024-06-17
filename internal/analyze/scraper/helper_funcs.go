@@ -52,7 +52,7 @@ func (s *Scraper) determineHeight(ctx context.Context) (int, error) {
 	scrollToBottom := func() error {
 		return chromedp.Run(ctx,
 			chromedp.KeyEvent(kb.End),
-			chromedp.Sleep(sleepTime),
+			chromedp.Sleep(1500*time.Millisecond),
 			chromedp.KeyEvent(kb.PageDown),
 			chromedp.Evaluate(`Math.round(window.scrollY)`, &lastScrollY),
 		)
